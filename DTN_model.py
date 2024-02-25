@@ -65,22 +65,20 @@ class PositionalEncoding(nn.Module):
         return self.dropout(embeddings_batch + positional_encodings)
 
 class DTN_model(nn.Module):
-    def __init__(self, model_dimension, number_of_heads, number_of_layers, dropout_probability, number_of_var,
-                 hidden_dimension_list):
+    def __init__(self, model_dimension, number_of_heads, number_of_layers,d_hid, dropout_probability, number_of_var,
+                 hidden_dimension_list,in_channel, out_channel, kernel_size, stride):
         super().__init__()
         # Periodic Embeddings
         # two different encoders and decoders
         EncoderLayer = nn.TransformerEncoderLayer(d_model=model_dimension,
-                                                  nhead=number_of_heads, batch_first=True)
+                                                  nhead=number_of_heads,dim_feedforward=d_hid, batch_first=True)
         self.encoder = nn.TransformerEncoder(EncoderLayer, num_layers=number_of_layers)
         self.fw_embedding = nn.Linear(number_of_var, model_dimension)
         self.bw_embedding = nn.Linear(number_of_var, model_dimension)
         self.pos_embedding = PositionalEncoding(model_dimension, dropout_probability)
 
-        DecoderLayer = nn.TransformerDecoderLayer(d_model=model_dimension,
-                                                  nhead=number_of_heads, batch_first=True)
-        self.decoder = nn.TransformerDecoder(DecoderLayer, num_layers=number_of_layers)
-        self.mlp = nn.ModuleList([nn.Sequential(nn.Linear(model_dimension,hidden_dimension_list[0]),nn.ReLU())]
+        self.decoder = nn.Conv1d(in_channel, out_channel, kernel_size, stride)
+        self.mlp = nn.ModuleList([nn.Sequential(nn.Linear(int((model_dimension - kernel_size)/stride+1),hidden_dimension_list[0]),nn.ReLU())]
                                  +[nn.Sequential(nn.Linear(hidden_dimension_list[i-1],hidden_dimension_list[i]),nn.ReLU()) for i in range(1,len(hidden_dimension_list))])
         self.init_params()
 
@@ -110,20 +108,16 @@ class DTN_model(nn.Module):
         input_repr = self.encoder(input_embeddings, src_key_padding_mask=src_mask)
         return input_repr
     
-    def decode(self, input, input_repr, bw_mask, src_mask):
-        input_embeddings = self.bw_embedding(input)
-        # print(input_embeddings.shape)
-        input_embeddings = self.pos_embedding(input_embeddings)
-        bw_repr = self.decoder(input_embeddings, input_repr, tgt_mask=bw_mask, tgt_key_padding_mask=src_mask)
-        return bw_repr
+    # def decode(self, input):
+    #     return bw_repr
         
     def forward(self, input, src_mask):
         input_repr = self.encode(input, src_mask)
-        # bw_mask = self.get_bw_mask(input)
-        # decode_repr = self.decode(input, input_repr, bw_mask, src_mask)
-        # for m in self.mlp:
-        #     decode_repr = m(decode_repr)
+        # decode_repr = self.decoder(input_repr.permute([0,2,1])).permute([0,2,1])
+        decode_repr = self.decoder(input_repr)
         for m in self.mlp:
-            input_repr = m(input_repr)
-        pred = F.log_softmax(input_repr,dim=1)
-        return pred
+            decode_repr = m(decode_repr)
+        # for m in self.mlp:
+        #     input_repr = m(input_repr)
+        # pred = F.log_softmax(input_repr,dim=1)
+        return decode_repr
