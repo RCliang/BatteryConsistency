@@ -51,7 +51,7 @@ class processor:
         final_y = []
         for item in data.groupby(self.groups):
             data_tmp = item[1]
-            data_tmp = data_tmp.drop('cycle')
+            data_tmp = data_tmp.drop(['cycle','samplingtimesec'])
             l = data_tmp.shape[0]
             if l < self.seq_len:
                 continue

@@ -74,7 +74,7 @@ def train(number_of_heads, number_of_layers, learning_rate):
     batch_size=4
     all_losses=[]
     for epoch in range(1,epochs+1):
-        train_loss = train_loop('processed_data/normal_sample/charge_data',MyModel,loss,optimizer,batch_size)
+        train_loss = train_loop('E:/projects/processed_data/normal_sample/charge_data',MyModel,loss,optimizer,batch_size)
         all_losses.append(train_loss)
         if epoch % 20 == 0:
             torch.save({
@@ -90,8 +90,8 @@ def objective(trail):
     lr = trail.suggest_float('lr', 1e-4, 1e-2,step=0.0001)
     # lossfunc = trail.suggest_categorical('loss', ['MSE', 'MAE'])
     # opt = trail.suggest_categorical('opt', ['Adam', 'SGD'])
-    number_of_heads = trail.suggest_int('number_of_heads', 4, 6, 8)
-    number_of_layers = trail.suggest_int('number_of_layers', 2,3,4,5)
+    number_of_heads = trail.suggest_int('number_of_heads', 4, 8, step=4)
+    number_of_layers = trail.suggest_int('number_of_layers', 2,5, step=1)
     # activefunc = trail.suggest_categorical('active', ['relu', 'sigmoid', 'tanh'])
     # weightdekey = trail.suggest_float('weight_dekay', 0, 1,step=0.01)
     # momentum= trail.suggest_float('momentum',0,1,step=0.01)
